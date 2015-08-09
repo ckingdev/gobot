@@ -28,12 +28,12 @@ type WSConnection struct {
 }
 
 func (ws *WSConnection) connectOnce(r *Room, try int) error {
-	r.Logger.Infof("Connecting to room %s...", r.name)
+	r.Logger.Infof("Connecting to room %s...", r.RoomName)
 	tlsConn, err := tls.Dial("tcp", "euphoria.io:443", &tls.Config{})
 	if err != nil {
 		return err
 	}
-	roomURL, err := url.Parse(fmt.Sprintf("wss://euphoria.io/room/%s/ws", r.name))
+	roomURL, err := url.Parse(fmt.Sprintf("wss://euphoria.io/room/%s/ws", r.RoomName))
 	if err != nil {
 		return err
 	}

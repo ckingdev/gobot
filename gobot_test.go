@@ -98,9 +98,8 @@ func BasicWSBot() (*Bot, error) {
 		return nil, err
 	}
 	rcfg := RoomConfig{
-		Name:         "test",
+		RoomName:     "test",
 		Password:     "",
-		BotName:      "TestBot",
 		AddlHandlers: []Handler{},
 		Conn:         &WSConnection{},
 	}
@@ -122,9 +121,8 @@ func BasicMockBot() (*Bot, *MockConn, error) {
 		incoming: make(chan *proto.Packet),
 	}
 	rcfg := RoomConfig{
-		Name:         "test",
+		RoomName:     "test",
 		Password:     "",
-		BotName:      "TestBot",
 		AddlHandlers: []Handler{},
 		Conn:         conn,
 	}
@@ -146,9 +144,8 @@ func MockBotWithPong() (*Bot, *MockConn, error) {
 		incoming: make(chan *proto.Packet),
 	}
 	rcfg := RoomConfig{
-		Name:         "test",
+		RoomName:     "test",
 		Password:     "",
-		BotName:      "TestBot",
 		AddlHandlers: []Handler{&PongHandler{}},
 		Conn:         conn,
 	}

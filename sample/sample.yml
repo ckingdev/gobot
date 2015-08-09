@@ -1,0 +1,8 @@
+Bot:
+    Name: GoBotSample
+    DbPath: GoBotSample.db
+Rooms:
+-
+    RoomName: test
+-
+    RoomName: testing

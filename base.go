@@ -45,12 +45,12 @@ func MakePacket(msgType proto.PacketType, payload interface{}) (*proto.Packet, e
 // use the database, so there is no chance of collisions in bucket names or
 // key-value instances.
 type Bot struct {
-	Rooms  map[string]*Room
-	name   string
-	ctx    scope.Context
-	DB     *bolt.DB
-	logger *logrus.Logger
-	cmd    chan interface{}
+	Rooms   map[string]*Room
+	BotName string
+	ctx     scope.Context
+	DB      *bolt.DB
+	logger  *logrus.Logger
+	cmd     chan interface{}
 }
 
 // Room contains a connection to a euphoria room and uses Handlers to process
@@ -58,13 +58,13 @@ type Bot struct {
 // initialized by the parent Bot. The Ctx member is distinct from the Bot's ctx
 // member.
 type Room struct {
-	name     string
+	RoomName string
 	conn     Connection
 	Ctx      scope.Context
 	password string
 	outbound chan *proto.Packet
 	inbound  chan *proto.Packet
-	handlers []Handler
+	Handlers []Handler
 	msgID    int
 	botName  string
 	Logger   *logrus.Logger
@@ -74,8 +74,8 @@ type Room struct {
 // BotConfig controls the configuration of a new Bot when it is created by the
 // user.
 type BotConfig struct {
-	Name   string
-	DbPath string
+	Name   string `yaml:"Name"`
+	DbPath string `yaml:"DbPath"`
 }
 
 // NewBot creates a bot with the given configuration. It will create a bolt DB
@@ -91,21 +91,20 @@ func NewBot(cfg BotConfig) (*Bot, error) {
 	cmd := make(chan interface{})
 	rooms := make(map[string]*Room)
 	return &Bot{
-		Rooms:  rooms,
-		name:   cfg.Name,
-		ctx:    ctx,
-		DB:     db,
-		logger: logger,
-		cmd:    cmd,
+		Rooms:   rooms,
+		BotName: cfg.Name,
+		ctx:     ctx,
+		DB:      db,
+		logger:  logger,
+		cmd:     cmd,
 	}, nil
 }
 
 // RoomConfig controls the configuration of a new Room when it is added to a Bot.
 type RoomConfig struct {
-	Name         string
-	Password     string
+	RoomName     string `yaml:"RoomName"`
+	Password     string `yaml:"Password,omitempty"`
 	AddlHandlers []Handler
-	BotName      string
 	Conn         Connection
 }
 
@@ -118,19 +117,19 @@ func (b *Bot) AddRoom(cfg RoomConfig) {
 	logger := logrus.New()
 	logger.Level = logrus.DebugLevel
 	room := Room{
-		name:     cfg.Name,
+		RoomName: cfg.RoomName,
 		password: cfg.Password,
 		Ctx:      ctx,
 		outbound: make(chan *proto.Packet, 5),
 		inbound:  make(chan *proto.Packet, 5),
-		botName:  cfg.BotName,
+		botName:  b.BotName,
 		msgID:    0,
 		Logger:   logger,
-		handlers: handlers,
+		Handlers: handlers,
 		DB:       b.DB,
 		conn:     cfg.Conn,
 	}
-	b.Rooms[room.name] = &room
+	b.Rooms[room.RoomName] = &room
 }
 
 func (r *Room) sendLoop() {
@@ -207,7 +206,7 @@ func (r *Room) dispatcher() {
 					return
 				}
 			}
-			for _, handler := range r.handlers {
+			for _, handler := range r.Handlers {
 				r.runHandlerIncoming(handler, *p)
 			}
 		}
@@ -277,12 +276,12 @@ func (r *Room) Run() error {
 	r.Ctx.WaitGroup().Add(1)
 	go r.dispatcher()
 
-	for _, handler := range r.handlers {
+	for _, handler := range r.Handlers {
 		go handler.Run(r)
 	}
 
 	<-r.Ctx.Done()
-	return fmt.Errorf("Fatal error in room %s: %s", r.name, r.Ctx.Err())
+	return fmt.Errorf("Fatal error in room %s: %s", r.RoomName, r.Ctx.Err())
 }
 
 // RunAllRooms runs room.Run() for all rooms registered with the bot. It will
