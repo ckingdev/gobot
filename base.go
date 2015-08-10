@@ -66,7 +66,7 @@ type Room struct {
 	inbound  chan *proto.Packet
 	Handlers []Handler
 	msgID    int
-	botName  string
+	BotName  string
 	Logger   *logrus.Logger
 	DB       *bolt.DB
 }
@@ -122,7 +122,7 @@ func (b *Bot) AddRoom(cfg RoomConfig) {
 		Ctx:      ctx,
 		outbound: make(chan *proto.Packet, 5),
 		inbound:  make(chan *proto.Packet, 5),
-		botName:  b.BotName,
+		BotName:  b.BotName,
 		msgID:    0,
 		Logger:   logger,
 		Handlers: handlers,
@@ -228,7 +228,7 @@ func (r *Room) queuePayload(payload interface{}, pType proto.PacketType) string 
 }
 
 func (r *Room) sendNick() (string, error) {
-	payload := proto.NickCommand{Name: r.botName}
+	payload := proto.NickCommand{Name: r.BotName}
 	msgID := r.queuePayload(payload, proto.NickType)
 	return msgID, nil
 }
