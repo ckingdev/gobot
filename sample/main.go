@@ -1,3 +1,4 @@
+// Package main provides some sample code for setting up a bot.
 package main
 
 import (
