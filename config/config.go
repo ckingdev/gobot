@@ -6,11 +6,15 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/cpalone/gobot"
+	"github.com/cpalone/gobot/handlers"
 )
 
 type Config struct {
-	Bot   gobot.BotConfig    `yaml:"Bot"`
-	Rooms []gobot.RoomConfig `yaml:"Rooms"`
+	Bot               gobot.BotConfig    `yaml:"Bot"`
+	Rooms             []gobot.RoomConfig `yaml:"Rooms"`
+	FollowBotProtocol bool               `yaml:"FollowBotProtocol"`
+	ShortHelp         string             `yaml:"ShortHelp"`
+	LongHelp          string             `yaml:"LongHelp"`
 }
 
 func configFromFile(path string) (*Config, error) {
@@ -33,6 +37,15 @@ func botFromConfig(c *Config) (*gobot.Bot, error) {
 	for _, roomCfg := range c.Rooms {
 		roomCfg.Conn = &gobot.WSConnection{}
 		b.AddRoom(roomCfg)
+	}
+	if c.FollowBotProtocol {
+		for _, roomCfg := range c.Rooms {
+			roomCfg.AddlHandlers = append(roomCfg.AddlHandlers,
+				&handlers.PongHandler{},
+				&handlers.UptimeHandler{},
+				&handlers.HelpHandler{LongDesc: c.LongHelp,
+					ShortDesc: c.ShortHelp})
+		}
 	}
 	return b, nil
 }
