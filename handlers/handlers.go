@@ -88,7 +88,7 @@ func (u *UptimeHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.P
 	uptime := time.Since(u.t0)
 	days := int(uptime.Hours() / 24)
 	hours := int(uptime.Hours() % 24)
-	if _, err := r.SendText(&payload.ID, fmt.Sprintf("This bot has been up for %dd %dh %dm %.3fs.", days, hours, uptime.Minutes(), uptime.Seconds())); err != nil {
+	if _, err := r.SendText(&payload.ID, fmt.Sprintf("This bot has been up for %dd %dh %dm %.3fs.", days, hours, int(uptime.Minutes() % 60), int(uptime.Seconds() % 60))); err != nil {
 		return nil, err
 	}
 	return nil, nil
