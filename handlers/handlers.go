@@ -3,10 +3,13 @@ package handlers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"euphoria.io/heim/proto"
+	"github.com/boltdb/bolt"
+
 	"github.com/cpalone/gobot"
 )
 
@@ -97,11 +100,6 @@ func (u *UptimeHandler) Stop(r *gobot.Room) {
 	return
 }
 
-type HelpHandler struct {
-	ShortDesc string
-	LongDesc  string
-}
-
 // HelpHandler stores a short help message and a long help message and responds
 // with them to !help and !help @[BotName], respectively.
 type HelpHandler struct {
@@ -148,6 +146,71 @@ func (h *HelpHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.Pac
 	}
 	if _, err := r.SendText(&payload.ID, h.LongDesc); err != nil {
 		return nil, err
+	}
+	return nil, nil
+}
+
+type SeenHandler struct{}
+
+func (s *SeenHandler) Run(r *gobot.Room) {
+	err := r.DB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("Seen_" + r.RoomName))
+		if err != nil {
+			return fmt.Errorf("Error creating bucket 'Seen_%s': %s", r.RoomName, err)
+		}
+		return nil
+	})
+	if err != nil {
+		r.Ctx.Terminate(err)
+	}
+	return
+}
+
+// Stop is a no-op.
+func (s *SeenHandler) Stop(r *gobot.Room) {
+	return
+}
+
+func (s *SeenHandler) storeSeen(r *gobot.Room, name string) error {
+	if name == "" {
+		return nil
+	}
+	err := r.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Seen_" + r.RoomName))
+		b.Put([]byte(name), []byte(strconv.FormatInt(time.Now().Unix(), 10)))
+		return nil
+	})
+	return err
+}
+
+func (s *SeenHandler) retrieveSeen(r *gobot.Room, name string) (*time.Duration, error) {
+	if name == "" {
+		return nil, nil
+	}
+	var t []byte
+	err := r.DB.View(func(tx *bolt.Tx) error {
+		t = tx.Bucket([]byte("Seen_" + r.RoomName)).Get([]byte(name))
+		return nil
+	})
+	num, err := strconv.ParseInt(string(t), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	lastSeen := time.Unix(num, 0)
+	elapsed := time.Since(lastSeen)
+	return &elapsed, nil
+}
+
+func (s *SeenHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.Packet, error) {
+	raw, err := p.Payload()
+	if err != nil {
+		return nil, err
+	}
+	switch msg := raw.(type) {
+	case *proto.SendEvent:
+		s.storeSeen(r, msg.Sender.Name)
+	default:
+		return nil, nil
 	}
 	return nil, nil
 }

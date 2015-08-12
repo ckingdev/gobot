@@ -150,13 +150,13 @@ func (r *Room) sendLoop() {
 }
 
 func (r *Room) recvLoop() {
+	defer r.Ctx.WaitGroup().Done()
 	for {
 		pchan := make(chan *proto.Packet)
 		go r.conn.ReceiveJSON(r, pchan)
 		select {
 		case <-r.Ctx.Done():
 			close(pchan)
-			r.Ctx.WaitGroup().Done()
 			return
 		case p := <-pchan:
 			r.inbound <- p
