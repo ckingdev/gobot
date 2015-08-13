@@ -97,11 +97,6 @@ func (u *UptimeHandler) Stop(r *gobot.Room) {
 	return
 }
 
-type HelpHandler struct {
-	ShortDesc string
-	LongDesc  string
-}
-
 // HelpHandler stores a short help message and a long help message and responds
 // with them to !help and !help @[BotName], respectively.
 type HelpHandler struct {
