@@ -159,7 +159,9 @@ func (r *Room) recvLoop() {
 			r.Ctx.WaitGroup().Done()
 			return
 		case p := <-pchan:
-			r.inbound <- p
+			if p != nil {
+				r.inbound <- p
+			}
 		}
 	}
 }
