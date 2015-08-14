@@ -19,7 +19,7 @@ const (
 )
 
 func init() {
-	logrus.SetLevel(logrus.WarnLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 }
 
 // MakePacket is a convenience function that takes a payload and a PacketType
@@ -294,9 +294,13 @@ func (b *Bot) RunAllRooms() {
 	for _, room := range b.Rooms {
 		b.ctx.WaitGroup().Add(1)
 		go func(r *Room) {
+			defer b.ctx.WaitGroup().Done()
 			err := r.Run()
+			r.Logger.Errorf("Error in room %s: %s", room.RoomName, err)
+			if err = r.Stop(); err != nil {
+				r.Logger.Errorf("Error stopping room %s: %s", room.RoomName, err)
+			}
 			errChan <- err
-			b.ctx.WaitGroup().Done()
 		}(room)
 	}
 	go func() {
