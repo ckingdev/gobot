@@ -82,11 +82,17 @@ func (u *UptimeHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.P
 	if !strings.HasPrefix(payload.Content, "!uptime") {
 		return nil, nil
 	}
-	if payload.Content != "!uptime" && payload.Content != "!uptime @"+r.BotName {
+	if payload.Content != "!uptime" && payload.Content != "!uptime @" + r.BotName {
 		return nil, nil
 	}
 	uptime := time.Since(u.t0)
-	if _, err := r.SendText(&payload.ID, fmt.Sprintf("This bot has been up for %s hours.", uptime.String())); err != nil {
+	days := int(uptime.Hours() / 24)
+	hours := int(uptime.Hours() % 24)
+	minutes := int(uptime.Minutes() % 60)
+	seconds := uptime.Seconds() % 60
+	if _, err := r.SendText(&payload.ID, fmt.Sprintf(
+			"This bot has been up for %dd %dh %dm %.3fs.",
+			days, hours, minutes, seconds)); err != nil {
 		return nil, err
 	}
 	return nil, nil
