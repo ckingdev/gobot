@@ -150,13 +150,13 @@ func (r *Room) sendLoop() {
 }
 
 func (r *Room) recvLoop() {
+	defer r.Ctx.WaitGroup().Done()
 	for {
 		pchan := make(chan *proto.Packet)
 		go r.conn.ReceiveJSON(r, pchan)
 		select {
 		case <-r.Ctx.Done():
 			close(pchan)
-			r.Ctx.WaitGroup().Done()
 			return
 		case p := <-pchan:
 			if p != nil {
@@ -167,7 +167,7 @@ func (r *Room) recvLoop() {
 }
 
 func (r *Room) runHandlerIncoming(handler Handler, p proto.Packet) {
-	defer r.Ctx.Done()
+	// defer r.Ctx.WaitGroup().Done()
 	retPacket, err := handler.HandleIncoming(r, &p)
 	if err != nil {
 		r.Ctx.Terminate(err)
@@ -269,6 +269,7 @@ func (r *Room) Run() error {
 
 	if err := r.conn.Connect(r); err != nil {
 		r.Ctx.Terminate(err)
+		r.Logger.Errorf("Error on initial connect to room: %s", err)
 		r.Ctx.WaitGroup().Wait()
 		return err
 	}
@@ -281,8 +282,8 @@ func (r *Room) Run() error {
 	for _, handler := range r.Handlers {
 		go handler.Run(r)
 	}
-
 	<-r.Ctx.Done()
+	r.Logger.Warnf("Room %s's context is finished.", r.RoomName)
 	return fmt.Errorf("Fatal error in room %s: %s", r.RoomName, r.Ctx.Err())
 }
 
@@ -305,6 +306,7 @@ func (b *Bot) RunAllRooms() {
 	}
 	go func() {
 		b.ctx.WaitGroup().Wait()
+		b.logger.Warnln("Bot waitgroup finished.")
 		close(errChan)
 	}()
 	for err := range errChan {
