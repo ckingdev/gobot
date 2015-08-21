@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"euphoria.io/heim/proto"
 	"euphoria.io/heim/proto/snowflake"
@@ -270,6 +271,8 @@ func (r *Room) SendText(parent *snowflake.Snowflake, msg string) (string, error)
 // Run starts up the necessary goroutines to send, receive, and dispatch packets
 // to handlers.
 func (r *Room) Run() error {
+	go r.monitorLoop()
+
 	r.Ctx.WaitGroup().Add(1)
 	go r.sendLoop()
 
@@ -297,6 +300,7 @@ func (r *Room) Run() error {
 // only return when all rooms are exited- common usage will be running this as
 // a goroutine.
 func (b *Bot) RunAllRooms() {
+	go b.monitorLoop()
 	errChan := make(chan error, len(b.Rooms))
 	for _, room := range b.Rooms {
 		b.ctx.WaitGroup().Add(1)
@@ -317,6 +321,28 @@ func (b *Bot) RunAllRooms() {
 	}()
 	for err := range errChan {
 		b.Logger.Errorf("%s", err)
+	}
+}
+
+func (r *Room) monitorLoop() {
+	for {
+		<-time.After(120 * time.Second)
+		if r.Ctx.Alive() {
+			r.Logger.Debugln("Context is alive.")
+		} else {
+			r.Logger.Debugln("Context is dead.")
+		}
+	}
+}
+
+func (b *Bot) monitorLoop() {
+	for {
+		<-time.After(120 * time.Second)
+		if b.ctx.Alive() {
+			b.Logger.Debugln("Context is alive.")
+		} else {
+			b.Logger.Debugln("Context is dead.")
+		}
 	}
 }
 
