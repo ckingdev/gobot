@@ -34,18 +34,19 @@ func botFromConfig(c *Config) (*gobot.Bot, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, roomCfg := range c.Rooms {
-		roomCfg.Conn = &gobot.WSConnection{}
-		b.AddRoom(roomCfg)
-	}
 	if c.FollowBotProtocol {
-		for _, roomCfg := range c.Rooms {
-			roomCfg.AddlHandlers = append(roomCfg.AddlHandlers,
+		b.Logger.Debugln("Adding handlers for bot protocol...")
+		for i, _ := range c.Rooms {
+			c.Rooms[i].AddlHandlers = []gobot.Handler{
 				&handlers.PongHandler{},
 				&handlers.UptimeHandler{},
 				&handlers.HelpHandler{LongDesc: c.LongHelp,
-					ShortDesc: c.ShortHelp})
+					ShortDesc: c.ShortHelp}}
 		}
+	}
+	for _, roomCfg := range c.Rooms {
+		roomCfg.Conn = &gobot.WSConnection{}
+		b.AddRoom(roomCfg)
 	}
 	return b, nil
 }
