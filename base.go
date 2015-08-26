@@ -234,8 +234,6 @@ func (r *Room) dispatcher() {
 					return
 				}
 				r.Logger.Errorf("Bounced: %s", bounce.Reason)
-				r.Ctx.Cancel()
-				return
 			}
 			for _, handler := range r.Handlers {
 				r.Logger.Debugln("Running handler...")
