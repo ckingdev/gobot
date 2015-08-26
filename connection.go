@@ -72,6 +72,7 @@ func (ws *WSConnection) Connect(r *Room) error {
 		}
 		time.Sleep(time.Duration(count) * time.Second * 5)
 	}
+	r.Logger.Errorf("Error connecting to websocket: %s", err)
 	return err
 }
 

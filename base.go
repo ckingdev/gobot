@@ -212,6 +212,30 @@ func (r *Room) dispatcher() {
 					r.Ctx.Terminate(err)
 					return
 				}
+			} else if p.Type == proto.ErrorReplyType {
+				r.Logger.Errorf("Error packet received- full contents: %s", p)
+				r.Ctx.Cancel()
+				return
+			} else if p.Error != "" {
+				r.Logger.Errorf("Error in packet: %s", p.Error)
+				r.Ctx.Cancel()
+				return
+			} else if p.Type == proto.BounceEventType {
+				payload, err := p.Payload()
+				if err != nil {
+					r.Logger.Error("Could not extract payload.")
+					r.Ctx.Cancel()
+					return
+				}
+				bounce, ok := payload.(*proto.BounceEvent)
+				if !ok {
+					r.Logger.Error("Could not assert BounceEvent as such.")
+					r.Ctx.Cancel()
+					return
+				}
+				r.Logger.Errorf("Bounced: %s", bounce.Reason)
+				r.Ctx.Cancel()
+				return
 			}
 			for _, handler := range r.Handlers {
 				r.Logger.Debugln("Running handler...")
