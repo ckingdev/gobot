@@ -234,6 +234,22 @@ func (r *Room) dispatcher() {
 					return
 				}
 				r.Logger.Errorf("Bounced: %s", bounce.Reason)
+			} else if p.Type == proto.DisconnectEventType {
+				payload, err := p.Payload()
+				if err != nil {
+					r.Logger.Error("Could not extract payload.")
+					r.Ctx.Cancel()
+					return
+				}
+				disc, ok := payload.(*proto.DisconnectEvent)
+				if !ok {
+					r.Logger.Error("Could not assert DisconnectEvent as such.")
+					r.Ctx.Cancel()
+					return
+				}
+				r.Logger.Errorf("disconnect-event received: reason: %s", disc.Reason)
+				r.Ctx.Cancel()
+				return
 			}
 			for _, handler := range r.Handlers {
 				r.Logger.Debugln("Running handler...")
