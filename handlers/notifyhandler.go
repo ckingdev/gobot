@@ -52,6 +52,10 @@ func (h *NotifyHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.P
 	}
 	go notice.write()
 
+	if _, err := r.SendText(&payload.ID, "/me noted your message and will inform " + data[1] + " about it."); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
