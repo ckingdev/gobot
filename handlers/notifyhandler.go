@@ -121,8 +121,8 @@ func read(receiver string) (*string) {
 	var notices []Notice
 	json.Unmarshal(buff, &notices)
 
-//	err = os.Remove(file)
-//	check(err)
+	err = os.Remove(file)
+	check(err)
 
 	results := ""
 	for _, notice := range notices {
