@@ -116,13 +116,17 @@ func read(receiver string) (*string) {
 	}
 
 	buff, err := ioutil.ReadFile(file)
-	check(err)
+	if err != nil {
+		return nil
+	}
 
 	var notices []Notice
 	json.Unmarshal(buff, &notices)
 
 	err = os.Remove(file)
-	check(err)
+	if err != nil {
+		return nil
+	}
 
 	results := ""
 	for _, notice := range notices {
