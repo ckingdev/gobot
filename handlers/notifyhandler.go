@@ -34,7 +34,7 @@ func (h *NotifyHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.P
 	}
 
 	results := read(payload.Sender.Name)
-	if *results != "" {
+	if results != nil {
 		if _, err := r.SendText(&payload.ID, *results); err != nil {
 			return nil, err
 		}
