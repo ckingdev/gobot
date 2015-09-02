@@ -12,7 +12,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	b.Rooms["test"].Handlers = []gobot.Handler{&handlers.PongHandler{}}
+
+//	b.Rooms["test"].Handlers = append(b.Rooms["test"].Handlers, &handlers.PongHandler{})
 	b.Rooms["testing"].Handlers = []gobot.Handler{&handlers.PongHandler{}}
 	b.RunAllRooms()
 }
