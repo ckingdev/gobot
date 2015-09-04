@@ -65,11 +65,13 @@ func (ws *WSConnection) Connect(r *Room) error {
 	if err == nil {
 		return nil
 	}
+	r.Logger.Warningf("Error connecting on first try: %s", err)
 	for count := 1; count < MAXRETRIES; count++ {
 		err = ws.connectOnce(r, count)
 		if err == nil {
 			return nil
 		}
+		r.Logger.Warningf("Error connecting on retry #%s: %s", err)
 		time.Sleep(time.Duration(count) * time.Second * 5)
 	}
 	r.Logger.Errorf("Error connecting to websocket: %s", err)
@@ -92,6 +94,7 @@ func (ws *WSConnection) SendJSON(r *Room, msg interface{}) (string, error) {
 			return "", err
 		}
 		if err := ws.conn.WriteJSON(msg); err != nil {
+			r.Logger.Warningf("Error writing JSON: %s", err)
 			return "", err
 		}
 	}
@@ -104,10 +107,12 @@ func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
 	if ws.conn == nil {
 		if err := ws.Connect(r); err != nil {
 			r.Logger.Errorf("Error connecting to euphoria: %s", err)
+			return
 		}
 	}
 	var msg proto.Packet
 	if err := ws.conn.ReadJSON(&msg); err != nil {
+		r.Logger.Errorf("Error reading JSON: %s", err)
 		if r.Ctx.Alive() {
 			p <- nil
 		}

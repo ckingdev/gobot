@@ -144,6 +144,7 @@ func (r *Room) sendLoop() {
 			if _, err := r.conn.SendJSON(r, msg); err != nil {
 				logrus.Errorf("Error sending JSON, terminating room: %s", err)
 				r.Ctx.Terminate(err)
+				return
 			}
 		}
 	}
