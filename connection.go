@@ -112,7 +112,10 @@ func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
 	}
 	var msg proto.Packet
 	if err := ws.conn.ReadJSON(&msg); err != nil {
-		r.Logger.Errorf("Error reading JSON: %s", err)
+		r.Logger.Warningf("Error reading JSON, reconnecting: %s", err)
+		if err := ws.Connect(r); err != nil {
+			r.Logger.Errorf("Error reconnecting: %s", err)
+		}
 		if r.Ctx.Alive() {
 			p <- nil
 		}
