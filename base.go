@@ -19,10 +19,6 @@ const (
 	MAXRETRIES = 5
 )
 
-func init() {
-	logrus.SetLevel(logrus.InfoLevel)
-}
-
 // MakePacket is a convenience function that takes a payload and a PacketType
 // and returns a Packet. The message ID of the packet is NOT set.
 func MakePacket(msgType proto.PacketType, payload interface{}) (*proto.Packet, error) {
@@ -115,7 +111,7 @@ func (b *Bot) AddRoom(cfg RoomConfig) {
 	b.Logger.Debugf("%s", len(cfg.AddlHandlers))
 	ctx := scope.New()
 	logger := logrus.New()
-	logger.Level = logrus.DebugLevel
+	logger.Level = logrus.InfoLevel
 	room := Room{
 		RoomName: cfg.RoomName,
 		password: cfg.Password,
@@ -170,7 +166,6 @@ func (r *Room) recvLoop() {
 }
 
 func (r *Room) runHandlerIncoming(handler Handler, p proto.Packet) {
-	// defer r.Ctx.WaitGroup().Done()
 	r.Logger.Debugln("runHandlerIncoming")
 	retPacket, err := handler.HandleIncoming(r, &p)
 	if err != nil {
@@ -197,6 +192,29 @@ func (r *Room) handlePing(p *proto.Packet) error {
 	return nil
 }
 
+func (r *Room) handleBadPacket(p *proto.Packet) {
+	payload, err := p.Payload()
+	if err != nil {
+		r.Logger.Errorf("Could not extract payload: %s", payload)
+		r.Ctx.Cancel()
+		return
+	}
+	if p.Error != "" {
+		r.Logger.Errorf("Error in received packet of type %s: %s", p.Type, p.Error)
+		r.Ctx.Cancel()
+	}
+	switch msg := payload.(type) {
+	case proto.ErrorReply:
+		r.Logger.Errorf("Error packet received: %s", msg.Error)
+		r.Ctx.Cancel()
+	case proto.BounceEvent:
+		r.Logger.Errorf("Bounced: %s", msg.Reason)
+	case proto.DisconnectEvent:
+		r.Logger.Errorf("disconnect-event received: reason: %s", msg.Reason)
+		r.Ctx.Cancel()
+	}
+}
+
 func (r *Room) dispatcher() {
 	defer r.Ctx.WaitGroup().Done()
 	for {
@@ -213,45 +231,8 @@ func (r *Room) dispatcher() {
 					r.Ctx.Terminate(err)
 					return
 				}
-			} else if p.Type == proto.ErrorReplyType {
-				r.Logger.Errorf("Error packet received- full contents: %s", p)
-				r.Ctx.Cancel()
-				return
-			} else if p.Error != "" {
-				r.Logger.Errorf("Error in packet: %s", p.Error)
-				r.Ctx.Cancel()
-				return
-			} else if p.Type == proto.BounceEventType {
-				payload, err := p.Payload()
-				if err != nil {
-					r.Logger.Error("Could not extract payload.")
-					r.Ctx.Cancel()
-					return
-				}
-				bounce, ok := payload.(*proto.BounceEvent)
-				if !ok {
-					r.Logger.Error("Could not assert BounceEvent as such.")
-					r.Ctx.Cancel()
-					return
-				}
-				r.Logger.Errorf("Bounced: %s", bounce.Reason)
-			} else if p.Type == proto.DisconnectEventType {
-				payload, err := p.Payload()
-				if err != nil {
-					r.Logger.Error("Could not extract payload.")
-					r.Ctx.Cancel()
-					return
-				}
-				disc, ok := payload.(*proto.DisconnectEvent)
-				if !ok {
-					r.Logger.Error("Could not assert DisconnectEvent as such.")
-					r.Ctx.Cancel()
-					return
-				}
-				r.Logger.Errorf("disconnect-event received: reason: %s", disc.Reason)
-				r.Ctx.Cancel()
-				return
 			}
+			r.handleBadPacket(p)
 			for _, handler := range r.Handlers {
 				r.Logger.Debugln("Running handler...")
 				r.runHandlerIncoming(handler, *p)
