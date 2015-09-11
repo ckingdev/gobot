@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"euphoria.io/heim/proto"
@@ -25,6 +26,7 @@ type Connection interface {
 // a websocket connection to a euphoria room.
 type WSConnection struct {
 	conn *websocket.Conn
+	m    sync.Mutex
 }
 
 func (ws *WSConnection) connectOnce(r *Room, try int) error {
@@ -80,6 +82,8 @@ func (ws *WSConnection) Connect(r *Room) error {
 
 // SendJSON sends a packet through the websocket connection.
 func (ws *WSConnection) SendJSON(r *Room, msg interface{}) (string, error) {
+	ws.m.Lock()
+	defer ws.m.Unlock()
 	if err := r.Ctx.Check("SendJSON"); err != nil {
 		return "", err
 	}
@@ -104,6 +108,8 @@ func (ws *WSConnection) SendJSON(r *Room, msg interface{}) (string, error) {
 // ReceiveJSON reads a message from the websocket and unmarshals it into the
 // provided packet.
 func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
+	ws.m.Lock()
+	defer ws.m.Unlock()
 	if ws.conn == nil {
 		if err := ws.Connect(r); err != nil {
 			r.Logger.Errorf("Error connecting to euphoria: %s", err)
