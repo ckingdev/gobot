@@ -193,6 +193,9 @@ func (r *Room) handlePing(p *proto.Packet) error {
 }
 
 func (r *Room) handleBadPacket(p *proto.Packet) {
+	if p == nil {
+		return
+	}
 	payload, err := p.Payload()
 	if err != nil {
 		r.Logger.Errorf("Could not extract payload: %s", payload)
