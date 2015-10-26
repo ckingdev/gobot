@@ -3,12 +3,75 @@ package handlers
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
 	"euphoria.io/heim/proto"
 	"github.com/cpalone/gobot"
 )
+
+// heyListenReplies are all the replies the bot could send when its pinged.
+var heyListenReplies = [...]string{
+	"I'm awake!",
+	"Hold on, the cookies are almost ready.",
+	"What?",
+	"Bug me when you want me to do something.",
+	"<makes grunting noise>",
+	"uh, can you not!",
+	"hmm ?",
+	"SCOOOOOOOOOOOOOOO...what? no I wasn't watching football.",
+	"again ? reeeaallly ?",
+	"wadayawant...",
+	"yes darling?",
+	"At your service.",
+	"On standby, awaiting orders.",
+	"(｡◕‿‿◕｡)",
+	"(ಠ‿ಠ)",
+	"¯\\_(ツ)_/¯",
+}
+
+// HeyListenHandler responds with various comical messages when the bot is pigned.
+type HeyListenHandler struct{}
+
+// HandleIncoming satisfies the Handler interface.
+func (*HeyListenHandler) HandleIncoming(r *gobot.Room, p *proto.Packet) (*proto.Packet, error) {
+	r.Logger.Debugln("Checking for bot ping...")
+
+	// ignore non-send events
+	if p.Type != proto.SendEventType {
+		return nil, nil
+	}
+
+	// get payload
+	raw, err := p.Payload()
+	if err != nil {
+		return nil, err
+	}
+	payload, ok := raw.(*proto.SendEvent)
+	if !ok {
+		r.Logger.Warningln("Unable to assert packet as SendEvent.")
+		return nil, err
+	}
+
+	// check if the bot is pigned.
+	if !strings.Contains(payload.Content, "@"+r.BotName) {
+		return nil, nil
+	}
+
+	r.Logger.Debugln("Sending comical reply...")
+	if _, err := r.SendText(&payload.ID, heyListenReplies[rand.Int()%len(heyListenReplies)]); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// Run is a no-op- the PongHandler does not need to run continuously, only in
+// response to an incoming packet.
+func (*PongHandler) Run(r *gobot.Room) { return }
+
+// Stop is also a no-op- there is nothing to stop.
+func (*PongHandler) Stop(r *gobot.Room) { return }
 
 // PongHandler responds to a send-event starting with "!ping" and returns a send
 // command containing "pong!".
