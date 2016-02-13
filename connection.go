@@ -1,10 +1,7 @@
 package gobot
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -29,19 +26,15 @@ type WSConnection struct {
 
 func (ws *WSConnection) connectOnce(r *Room, try int) error {
 	r.Logger.Infof("Connecting to room %s...", r.RoomName)
-	tlsConn, err := tls.Dial("tcp", "euphoria.io:443", &tls.Config{})
-	if err != nil {
-		return err
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
 	}
-	roomURL, err := url.Parse(fmt.Sprintf("wss://euphoria.io/room/%s/ws", r.RoomName))
-	if err != nil {
-		return err
-	}
-	wsConn, _, err := websocket.NewClient(tlsConn, roomURL, http.Header{}, 4096, 4096)
-	if err != nil {
-		return err
-	}
+	url := fmt.Sprintf("wss://euphoria.io/room/%s/ws", r.RoomName)
 	if err := r.Ctx.Check("connectOnce", try); err != nil {
+		return err
+	}
+	wsConn, _, err := dialer.Dial(url, nil)
+	if err != nil {
 		return err
 	}
 	ws.conn = wsConn
