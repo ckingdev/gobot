@@ -3,6 +3,7 @@ package gobot
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"euphoria.io/heim/proto"
@@ -22,6 +23,7 @@ type Connection interface {
 // a websocket connection to a euphoria room.
 type WSConnection struct {
 	conn *websocket.Conn
+	m    sync.Mutex
 }
 
 func (ws *WSConnection) connectOnce(r *Room, try int) error {
@@ -49,8 +51,7 @@ func (ws *WSConnection) connectOnce(r *Room, try int) error {
 	return nil
 }
 
-// Connect tries to connect to a euphoria room with multiple retries upon error.
-func (ws *WSConnection) Connect(r *Room) error {
+func (ws *WSConnection) connectUnlocked(r *Room) error {
 	if err := r.Ctx.Check("Connect"); err != nil {
 		return err
 	}
@@ -71,18 +72,27 @@ func (ws *WSConnection) Connect(r *Room) error {
 	return err
 }
 
+// Connect tries to connect to a euphoria room with multiple retries upon error.
+func (ws *WSConnection) Connect(r *Room) error {
+	ws.m.Lock()
+	defer ws.m.Unlock()
+	return ws.connectUnlocked(r)
+}
+
 // SendJSON sends a packet through the websocket connection.
 func (ws *WSConnection) SendJSON(r *Room, msg interface{}) (string, error) {
+	ws.m.Lock()
+	defer ws.m.Unlock()
 	if err := r.Ctx.Check("SendJSON"); err != nil {
 		return "", err
 	}
 	if ws.conn == nil {
-		if err := ws.Connect(r); err != nil {
+		if err := ws.connectUnlocked(r); err != nil {
 			return "", err
 		}
 	}
 	if err := ws.conn.WriteJSON(msg); err != nil {
-		err = ws.Connect(r)
+		err = ws.connectUnlocked(r)
 		if err != nil {
 			return "", err
 		}
@@ -97,8 +107,10 @@ func (ws *WSConnection) SendJSON(r *Room, msg interface{}) (string, error) {
 // ReceiveJSON reads a message from the websocket and unmarshals it into the
 // provided packet.
 func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
+	ws.m.Lock()
+	defer ws.m.Unlock()
 	if ws.conn == nil {
-		if err := ws.Connect(r); err != nil {
+		if err := ws.connectUnlocked(r); err != nil {
 			r.Logger.Errorf("Error connecting to euphoria: %s", err)
 			return
 		}
@@ -106,7 +118,7 @@ func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
 	var msg proto.Packet
 	if err := ws.conn.ReadJSON(&msg); err != nil {
 		r.Logger.Warningf("Error reading JSON, reconnecting: %s", err)
-		if err := ws.Connect(r); err != nil {
+		if err := ws.connectUnlocked(r); err != nil {
 			r.Logger.Errorf("Error reconnecting: %s", err)
 		}
 		if r.Ctx.Alive() {
@@ -119,10 +131,17 @@ func (ws *WSConnection) ReceiveJSON(r *Room, p chan *proto.Packet) {
 	}
 }
 
-// Close simply closes the websocket connection, if it is connected.
-func (ws *WSConnection) Close() error {
+func (ws *WSConnection) closeUnlocked() error {
 	if ws.conn == nil {
 		return nil
 	}
+	ws.conn.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(time.Second))
 	return ws.conn.Close()
+}
+
+// Close simply closes the websocket connection, if it is connected.
+func (ws *WSConnection) Close() error {
+	ws.m.Lock()
+	defer ws.m.Unlock()
+	return ws.closeUnlocked()
 }

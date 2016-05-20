@@ -330,9 +330,9 @@ func (b *Bot) RunAllRooms() {
 		go func(r *Room) {
 			defer b.ctx.WaitGroup().Done()
 			err := r.Run()
-			r.Logger.Errorf("Error in room %s: %s", room.RoomName, err)
+			r.Logger.Errorf("Error in room %s: %s", r.RoomName, err)
 			if err = r.Stop(); err != nil {
-				r.Logger.Errorf("Error stopping room %s: %s", room.RoomName, err)
+				r.Logger.Errorf("Error stopping room %s: %s", r.RoomName, err)
 			}
 			errChan <- err
 		}(room)
@@ -374,13 +374,13 @@ func (b *Bot) monitorLoop() {
 func (r *Room) Stop() error {
 	r.Logger.Warningf("Room '%s' shutting down", r.RoomName)
 	r.Ctx.Cancel()
+	r.Logger.Debugln("Waiting for graceful shutdown...")
+	r.Ctx.WaitGroup().Wait()
 	r.Logger.Debugln("Closing connection...")
 	if err := r.conn.Close(); err != nil {
 		r.Logger.Debugf("Error closing connection: %s", err)
 		return err
 	}
-	r.Logger.Debugln("Waiting for graceful shutdown...")
-	r.Ctx.WaitGroup().Wait()
 	return nil
 }
 
